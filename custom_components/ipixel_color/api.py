@@ -336,6 +336,56 @@ class iPIXELAPI:
             _LOGGER.error("Error displaying pypixelcolor text: %s", err)
             return False
 
+    async def display_image_file(self, file_path: str) -> bool:
+        """Display an image file (PNG, GIF) on the device.
+
+        Args:
+            file_path: Path to the image file.
+
+        Returns:
+            True if image was sent successfully.
+        """
+        try:
+            import os
+
+            if not os.path.exists(file_path):
+                _LOGGER.error("Image file not found: %s", file_path)
+                return False
+
+            # Determine file extension
+            _, ext = os.path.splitext(file_path)
+            ext = ext.lower()
+
+            # Read file content
+            with open(file_path, "rb") as f:
+                image_bytes = f.read()
+
+            # Get device info
+            device_info = await self.get_device_info()
+
+            # Generate commands
+            commands = make_image_command(
+                image_bytes=image_bytes,
+                file_extension=ext,
+                resize_method="fit",  # Fit ensures aspect ratio is preserved (padding) or use 'crop'
+                device_info_dict=device_info
+            )
+
+            # Send all command frames
+            _LOGGER.debug("Sending image file %s (%d frames)", file_path, len(commands))
+            for i, command in enumerate(commands):
+                success = await self._bluetooth.send_command(command)
+                if not success:
+                    _LOGGER.error("Failed to send image frame %d/%d", i + 1, len(commands))
+                    return False
+
+            _LOGGER.info("Image file sent successfully: %s", file_path)
+            return True
+
+        except Exception as err:
+            _LOGGER.error("Error displaying image file: %s", err)
+            return False
+
     def _notification_handler(self, sender: Any, data: bytearray) -> None:
         """Handle notifications from the device."""
         _LOGGER.debug("Notification from %s: %s", sender, data.hex())
