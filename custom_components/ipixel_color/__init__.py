@@ -14,7 +14,16 @@ from .const import DOMAIN, CONF_ADDRESS, CONF_NAME
 _LOGGER = logging.getLogger(__name__)
 
 # Platforms supported by this integration
-PLATFORMS: list[Platform] = [Platform.SWITCH, Platform.TEXT, Platform.SENSOR, Platform.SELECT, Platform.NUMBER, Platform.BUTTON, Platform.LIGHT]
+PLATFORMS: list[Platform] = [
+    Platform.SWITCH,
+    Platform.TEXT,
+    Platform.SENSOR,
+    Platform.SELECT,
+    Platform.NUMBER,
+    Platform.BUTTON,
+    Platform.LIGHT,
+    Platform.MEDIA_PLAYER,
+]
 
 # Type alias for iPIXEL config entries
 

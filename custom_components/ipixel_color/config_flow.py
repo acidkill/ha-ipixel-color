@@ -7,13 +7,14 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.const import CONF_NAME
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 
 from .api import iPIXELAPI, iPIXELConnectionError, iPIXELTimeoutError
 from .bluetooth.scanner import discover_ipixel_devices_ha
 from .const import DOMAIN, CONF_ADDRESS
+from .helpers import GifManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -64,6 +65,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def __init__(self):
         """Initialize config flow."""
         self._discovered_devices: dict[str, dict[str, Any]] = {}
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        """Get the options flow for this handler."""
+        return OptionsFlowHandler(config_entry)
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -274,4 +281,92 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="bluetooth_confirm",
             description_placeholders=placeholders,
+        )
+
+
+class OptionsFlowHandler(config_entries.OptionsFlow):
+    """Handle options."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self.config_entry = config_entry
+        self.gif_manager: GifManager | None = None
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Manage the options."""
+        if not self.gif_manager:
+            self.gif_manager = GifManager(self.hass)
+
+        if user_input is not None:
+            if user_input["menu"] == "add_gif":
+                return await self.async_step_add_gif()
+            if user_input["menu"] == "manage_gifs":
+                return await self.async_step_manage_gifs()
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema({
+                vol.Required("menu", default="add_gif"): vol.In({
+                    "add_gif": "Add GIF from URL",
+                    "manage_gifs": "Manage GIFs (Delete)"
+                })
+            })
+        )
+
+    async def async_step_add_gif(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle adding a GIF."""
+        errors = {}
+
+        if user_input is not None:
+            url = user_input["url"]
+            alias = user_input["alias"]
+
+            if not self.gif_manager:
+                self.gif_manager = GifManager(self.hass)
+
+            success = await self.gif_manager.async_add_gif(url, alias)
+            if success:
+                return await self.async_step_init()
+            else:
+                errors["base"] = "add_gif_failed"
+
+        return self.async_show_form(
+            step_id="add_gif",
+            data_schema=vol.Schema({
+                vol.Required("url"): str,
+                vol.Required("alias"): str,
+            }),
+            errors=errors,
+        )
+
+    async def async_step_manage_gifs(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle managing GIFs."""
+        if not self.gif_manager:
+            self.gif_manager = GifManager(self.hass)
+
+        gifs = self.gif_manager.get_gifs()
+
+        if user_input is not None:
+            for gif in user_input["gifs"]:
+                self.gif_manager.delete_gif(gif)
+            return await self.async_step_init()
+
+        if not gifs:
+            return self.async_show_form(
+                step_id="manage_gifs",
+                description_placeholders={"text": "No GIFs found."},
+                data_schema=vol.Schema({})
+            )
+
+        return self.async_show_form(
+            step_id="manage_gifs",
+            data_schema=vol.Schema({
+                vol.Required("gifs"): vol.MultiSelect(gifs)
+            })
         )
