@@ -1,4 +1,5 @@
 """Font location utilities for iPIXEL Color integration."""
+
 from __future__ import annotations
 
 import logging
@@ -29,10 +30,13 @@ def get_font_locations() -> list[Path]:
     # 2nd priority: pypixelcolor package fonts
     try:
         import pypixelcolor
+
         pypixelcolor_fonts_dir = Path(pypixelcolor.__file__).parent / "fonts"
         if pypixelcolor_fonts_dir.exists() and pypixelcolor_fonts_dir.is_dir():
             locations.append(pypixelcolor_fonts_dir)
-            _LOGGER.debug("Added pypixelcolor fonts directory: %s", pypixelcolor_fonts_dir)
+            _LOGGER.debug(
+                "Added pypixelcolor fonts directory: %s", pypixelcolor_fonts_dir
+            )
     except (ImportError, AttributeError) as e:
         _LOGGER.debug("Could not locate pypixelcolor fonts: %s", e)
 
@@ -68,8 +72,8 @@ def get_font_path(font_name: str, locations: list[Path] | None = None) -> Path |
         Path to font file if found, None otherwise
     """
     # Add common font extensions if not present
-    if not any(font_name.lower().endswith(ext) for ext in ['.ttf', '.otf', '.woff', '.woff2']):
-        font_name += '.ttf'
+    if not font_name.lower().endswith((".ttf", ".otf", ".woff", ".woff2")):
+        font_name += ".ttf"
 
     # Get font locations if not provided
     if locations is None:
