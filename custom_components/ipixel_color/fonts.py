@@ -1,23 +1,18 @@
 """Font location utilities for iPIXEL Color integration."""
+
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
+from functools import lru_cache
 from pathlib import Path
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def get_font_locations() -> list[Path]:
-    """Get list of font directories sorted by priority.
-
-    Priority order:
-    1. Custom fonts from this integration's fonts/ folder
-    2. Fonts from pypixelcolor package
-    3. System fonts (Linux standard locations)
-
-    Returns:
-        List of Path objects for font directories that exist
-    """
+@lru_cache(maxsize=1)
+def _get_font_locations_cached() -> tuple[Path, ...]:
+    """Get list of font directories sorted by priority (cached version)."""
     locations = []
 
     # 1st priority: Custom fonts from this integration
@@ -29,10 +24,13 @@ def get_font_locations() -> list[Path]:
     # 2nd priority: pypixelcolor package fonts
     try:
         import pypixelcolor
+
         pypixelcolor_fonts_dir = Path(pypixelcolor.__file__).parent / "fonts"
         if pypixelcolor_fonts_dir.exists() and pypixelcolor_fonts_dir.is_dir():
             locations.append(pypixelcolor_fonts_dir)
-            _LOGGER.debug("Added pypixelcolor fonts directory: %s", pypixelcolor_fonts_dir)
+            _LOGGER.debug(
+                "Added pypixelcolor fonts directory: %s", pypixelcolor_fonts_dir
+            )
     except (ImportError, AttributeError) as e:
         _LOGGER.debug("Could not locate pypixelcolor fonts: %s", e)
 
@@ -54,26 +52,37 @@ def get_font_locations() -> list[Path]:
     if not locations:
         _LOGGER.warning("No font directories found!")
 
-    return locations
+    return tuple(locations)
 
 
-def get_font_path(font_name: str, locations: list[Path] | None = None) -> Path | None:
-    """Find font file in available font locations.
+def get_font_locations() -> list[Path]:
+    """Get list of font directories sorted by priority.
 
-    Args:
-        font_name: Font filename (with or without extension)
-        locations: Optional list of font directories to search (uses get_font_locations() if None)
+    Priority order:
+    1. Custom fonts from this integration's fonts/ folder
+    2. Fonts from pypixelcolor package
+    3. System fonts (Linux standard locations)
 
     Returns:
-        Path to font file if found, None otherwise
+        List of Path objects for font directories that exist
     """
+    return list(_get_font_locations_cached())
+
+
+@lru_cache(maxsize=128)
+def _get_font_path_cached(
+    font_name: str, locations: tuple[Path, ...] | None = None
+) -> Path | None:
+    """Find font file in available font locations (cached version)."""
     # Add common font extensions if not present
-    if not any(font_name.lower().endswith(ext) for ext in ['.ttf', '.otf', '.woff', '.woff2']):
-        font_name += '.ttf'
+    if not any(
+        font_name.lower().endswith(ext) for ext in [".ttf", ".otf", ".woff", ".woff2"]
+    ):
+        font_name += ".ttf"
 
     # Get font locations if not provided
     if locations is None:
-        locations = get_font_locations()
+        locations = _get_font_locations_cached()
 
     # Search each location in priority order
     for location in locations:
@@ -92,17 +101,30 @@ def get_font_path(font_name: str, locations: list[Path] | None = None) -> Path |
     return None
 
 
-def get_available_fonts(locations: list[Path] | None = None) -> list[str]:
-    """Get list of available font filenames from all locations.
+def get_font_path(
+    font_name: str, locations: Sequence[Path] | None = None
+) -> Path | None:
+    """Find font file in available font locations.
 
     Args:
-        locations: Optional list of font directories to search (uses get_font_locations() if None)
+        font_name: Font filename (with or without extension)
+        locations: Optional sequence of font directories to search (uses get_font_locations() if None)
 
     Returns:
-        Sorted list of unique font filenames
+        Path to font file if found, None otherwise
     """
+    if locations is not None and not isinstance(locations, tuple):
+        locations = tuple(locations)
+    return _get_font_path_cached(font_name, locations)
+
+
+@lru_cache(maxsize=1)
+def _get_available_fonts_cached(
+    locations: tuple[Path, ...] | None = None,
+) -> tuple[str, ...]:
+    """Get list of available font filenames from all locations (cached version)."""
     if locations is None:
-        locations = get_font_locations()
+        locations = _get_font_locations_cached()
 
     fonts = set()
 
@@ -134,4 +156,18 @@ def get_available_fonts(locations: list[Path] | None = None) -> list[str]:
         fonts.add("OpenSans-Light.ttf")
 
     _LOGGER.debug("Found %d unique fonts across all locations", len(fonts))
-    return sorted(list(fonts))
+    return tuple(sorted(list(fonts)))
+
+
+def get_available_fonts(locations: Sequence[Path] | None = None) -> list[str]:
+    """Get list of available font filenames from all locations.
+
+    Args:
+        locations: Optional sequence of font directories to search (uses get_font_locations() if None)
+
+    Returns:
+        Sorted list of unique font filenames
+    """
+    if locations is not None and not isinstance(locations, tuple):
+        locations = tuple(locations)
+    return list(_get_available_fonts_cached(locations))
