@@ -350,11 +350,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if not self.gif_manager:
             self.gif_manager = GifManager(self.hass)
 
-        gifs = self.gif_manager.get_gifs()
+        gifs = await self.gif_manager.async_get_gifs()
 
         if user_input is not None:
             for gif in user_input["gifs"]:
-                self.gif_manager.delete_gif(gif)
+                await self.gif_manager.async_delete_gif(gif)
             return await self.async_step_init()
 
         if not gifs:
