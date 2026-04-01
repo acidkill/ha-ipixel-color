@@ -33,6 +33,7 @@ class iPIXELAPI:
             hass: Home Assistant instance
             address: Bluetooth MAC address
         """
+        self._hass = hass
         self._address = address
         self._bluetooth = BluetoothClient(hass, address)
         self._power_state = False
@@ -346,19 +347,24 @@ class iPIXELAPI:
             True if image was sent successfully.
         """
         try:
-            import os
+            def _prepare_image_data() -> tuple[bytes, str] | None:
+                import os
+                if not os.path.exists(file_path):
+                    return None
 
-            if not os.path.exists(file_path):
+                # Determine file extension
+                _, ext = os.path.splitext(file_path)
+
+                # Read file content
+                with open(file_path, "rb") as f:
+                    return f.read(), ext.lower()
+
+            result = await self._hass.async_add_executor_job(_prepare_image_data)
+            if result is None:
                 _LOGGER.error("Image file not found: %s", file_path)
                 return False
 
-            # Determine file extension
-            _, ext = os.path.splitext(file_path)
-            ext = ext.lower()
-
-            # Read file content
-            with open(file_path, "rb") as f:
-                image_bytes = f.read()
+            image_bytes, ext = result
 
             # Get device info
             device_info = await self.get_device_info()
