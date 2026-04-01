@@ -1,0 +1,21 @@
+{
+  "name": "com.ipixel.color",
+  "version": "1.0.0",
+  "description": "Homey Pro integration for iPIXEL Color LED matrix displays via Bluetooth.",
+  "main": "app.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "homey": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.0.0",
+    "typescript": "^5.0.0"
+  }
+}

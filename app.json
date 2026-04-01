@@ -1,0 +1,52 @@
+{
+  "id": "com.ipixel.color",
+  "name": {
+    "en": "iPIXEL Color"
+  },
+  "version": "1.0.0",
+  "compatibility": ">=5.0.0",
+  "author": {
+    "name": "cagcoach"
+  },
+  "description": {
+    "en": "Homey Pro integration for iPIXEL Color LED matrix displays via Bluetooth."
+  },
+  "category": ["lights"],
+  "permissions": ["homey:ble"],
+  "platforms": ["local"],
+  "drivers": [
+    {
+      "id": "ipixel_color",
+      "name": {
+        "en": "iPIXEL Display"
+      },
+      "class": "light",
+      "capabilities": [
+        "onoff",
+        "dim",
+        "light_hue",
+        "light_saturation",
+        "ipixel_mode",
+        "ipixel_text",
+        "ipixel_clock_style"
+      ],
+      "images": {
+        "large": "/assets/images/large.png",
+        "small": "/assets/images/small.png"
+      },
+      "pair": [
+        {
+          "id": "list_devices",
+          "template": "list_devices",
+          "navigation": {
+            "next": "add_devices"
+          }
+        },
+        {
+          "id": "add_devices",
+          "template": "add_devices"
+        }
+      ]
+    }
+  ]
+}
