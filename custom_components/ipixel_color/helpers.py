@@ -21,7 +21,6 @@ class GifManager:
         """Initialize the GIF manager."""
         self.hass = hass
         self._media_dir = Path(hass.config.path("ipixel_media"))
-        self._ensure_media_dir()
 
     def _ensure_media_dir(self) -> None:
         """Ensure media directory exists."""
@@ -48,6 +47,7 @@ class GifManager:
 
             # Validate GIF using PIL in executor to avoid blocking loop
             def validate_and_save():
+                self._ensure_media_dir()
                 with open(filepath, "wb") as f:
                     f.write(content)
 
@@ -74,38 +74,46 @@ class GifManager:
             _LOGGER.error("Error adding GIF: %s", err)
             return False
 
-    def get_gifs(self) -> list[str]:
+    async def async_get_gifs(self) -> list[str]:
         """Return list of available GIF filenames."""
-        if not self._media_dir.exists():
-            return []
-        return [f.name for f in self._media_dir.glob("*.gif")]
+        def _get_gifs():
+            if not self._media_dir.exists():
+                return []
+            return [f.name for f in self._media_dir.glob("*.gif")]
+        return await self.hass.async_add_executor_job(_get_gifs)
 
-    def delete_gif(self, filename: str) -> bool:
+    async def async_delete_gif(self, filename: str) -> bool:
         """Delete a GIF file."""
         filepath = self._media_dir / filename
-        if filepath.exists():
-            try:
-                filepath.unlink()
-                return True
-            except Exception as err:
-                _LOGGER.error("Error deleting GIF: %s", err)
-                return False
-        return False
 
-    def get_gif_path(self, filename: str) -> Path | None:
+        def _delete_gif():
+            if filepath.exists():
+                try:
+                    filepath.unlink()
+                    return True
+                except Exception as err:
+                    _LOGGER.error("Error deleting GIF: %s", err)
+                    return False
+            return False
+        return await self.hass.async_add_executor_job(_delete_gif)
+
+    async def async_get_gif_path(self, filename: str) -> Path | None:
         """Get full path for a GIF file."""
         filepath = self._media_dir / filename
-        if filepath.exists():
-            return filepath
-        return None
+
+        def _check_exists():
+            if filepath.exists():
+                return filepath
+            return None
+        return await self.hass.async_add_executor_job(_check_exists)
 
     async def get_gif_duration(self, filename: str) -> float:
         """Get total duration of GIF in seconds."""
         filepath = self._media_dir / filename
-        if not filepath.exists():
-            return 0.0
 
         def calculate_duration():
+            if not filepath.exists():
+                return 0.0
             try:
                 with Image.open(filepath) as img:
                     if not getattr(img, "is_animated", False):

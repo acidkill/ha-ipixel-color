@@ -98,11 +98,11 @@ class iPIXELMediaPlayer(MediaPlayerEntity):
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
         await super().async_added_to_hass()
-        self._update_source_list()
+        await self.async_update_source_list()
 
-    def _update_source_list(self) -> None:
+    async def async_update_source_list(self) -> None:
         """Update available GIFs."""
-        self._attr_source_list = sorted(self._gif_manager.get_gifs())
+        self._attr_source_list = sorted(await self._gif_manager.async_get_gifs())
 
     async def async_select_source(self, source: str) -> None:
         """Select a specific source."""
@@ -146,7 +146,7 @@ class iPIXELMediaPlayer(MediaPlayerEntity):
         try:
             while True:
                 # Get full path
-                file_path = self._gif_manager.get_gif_path(current_filename)
+                file_path = await self._gif_manager.async_get_gif_path(current_filename)
 
                 if file_path:
                     # Send to device
@@ -182,7 +182,7 @@ class iPIXELMediaPlayer(MediaPlayerEntity):
                     break
 
                 # Determine next file
-                self._update_source_list() # Refresh list in case something changed
+                await self.async_update_source_list() # Refresh list in case something changed
                 if not self._attr_source_list:
                     break
 
@@ -227,7 +227,7 @@ class iPIXELMediaPlayer(MediaPlayerEntity):
 
     async def async_media_next_track(self) -> None:
         """Send next track command."""
-        self._update_source_list()
+        await self.async_update_source_list()
         if not self._attr_source_list:
             return
 
@@ -241,7 +241,7 @@ class iPIXELMediaPlayer(MediaPlayerEntity):
 
     async def async_media_previous_track(self) -> None:
         """Send previous track command."""
-        self._update_source_list()
+        await self.async_update_source_list()
         if not self._attr_source_list:
             return
 
