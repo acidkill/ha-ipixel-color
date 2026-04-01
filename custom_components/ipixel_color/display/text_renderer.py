@@ -136,25 +136,15 @@ def render_text_to_png(text: str, width: int, height: int, antialias: bool = Tru
         # For RGB images, convert to grayscale
         grayscale_img = img.convert('L')
 
-    # Create RGB image with interpolated colors
-    rgb_img = Image.new('RGB', (width, height))
-    pixels_gray = grayscale_img.load()
-    pixels_rgb = rgb_img.load()
+    # Create RGB image with interpolated colors using Pillow's composite for better performance
+    # This replaces the manual pixel-by-pixel loop and is much faster as it's done in C
+    bg_img = Image.new('RGB', (width, height), (bg_r, bg_g, bg_b))
+    text_img = Image.new('RGB', (width, height), (text_r, text_g, text_b))
 
-    for y in range(height):
-        for x in range(width):
-            # Get grayscale value (0-255)
-            gray_value = pixels_gray[x, y]
-
-            # Linear interpolation: t = gray_value / 255.0
-            # color = bg_color * (1-t) + text_color * t
-            t = gray_value / 255.0
-
-            r = int(bg_r * (1 - t) + text_r * t)
-            g = int(bg_g * (1 - t) + text_g * t)
-            b = int(bg_b * (1 - t) + text_b * t)
-
-            pixels_rgb[x, y] = (r, g, b)
+    # Image.composite(image1, image2, mask):
+    # result = image1 * mask + image2 * (1 - mask)
+    # Here, mask=255 (text) uses text_img, mask=0 (bg) uses bg_img
+    rgb_img = Image.composite(text_img, bg_img, grayscale_img)
 
     # Convert to PNG bytes
     png_buffer = io.BytesIO()

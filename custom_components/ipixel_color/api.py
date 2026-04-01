@@ -33,6 +33,7 @@ class iPIXELAPI:
             hass: Home Assistant instance
             address: Bluetooth MAC address
         """
+        self._hass = hass
         self._address = address
         self._bluetooth = BluetoothClient(hass, address)
         self._power_state = False
@@ -227,15 +228,18 @@ class iPIXELAPI:
             width = device_info["width"]
             height = device_info["height"]
 
-            # Render text to PNG with color gradient
-            png_data = render_text_to_png(text, width, height, antialias, font_size, font, line_spacing, text_color, bg_color)
+            # Render text to PNG with color gradient in executor to avoid blocking event loop
+            png_data = await self._hass.async_add_executor_job(
+                render_text_to_png, text, width, height, antialias, font_size, font, line_spacing, text_color, bg_color
+            )
 
-            # Generate image commands using pypixelcolor
-            commands = make_image_command(
-                image_bytes=png_data,
-                file_extension=".png",
-                resize_method="crop",
-                device_info_dict=device_info
+            # Generate image commands using pypixelcolor in executor
+            commands = await self._hass.async_add_executor_job(
+                make_image_command,
+                png_data,
+                ".png",
+                "crop",
+                device_info
             )
 
             # Send all command frames
@@ -294,17 +298,18 @@ class iPIXELAPI:
             device_info = await self.get_device_info()
             device_height = device_info["height"]
 
-            # Generate text commands using pypixelcolor
-            commands = make_text_command(
-                text=text,
-                color=color,
-                bg_color=bg_color,
-                font=font,
-                animation=animation,
-                speed=speed,
-                rainbow_mode=rainbow_mode,
-                save_slot=0,
-                device_height=device_height
+            # Generate text commands using pypixelcolor in executor to avoid blocking event loop
+            commands = await self._hass.async_add_executor_job(
+                make_text_command,
+                text,
+                color,
+                bg_color,
+                font,
+                animation,
+                speed,
+                rainbow_mode,
+                0,
+                device_height
             )
 
             # Send all command frames
@@ -356,19 +361,23 @@ class iPIXELAPI:
             _, ext = os.path.splitext(file_path)
             ext = ext.lower()
 
-            # Read file content
-            with open(file_path, "rb") as f:
-                image_bytes = f.read()
+            # Read file content in executor to avoid blocking event loop
+            def _read_file(path: str) -> bytes:
+                with open(path, "rb") as f:
+                    return f.read()
+
+            image_bytes = await self._hass.async_add_executor_job(_read_file, file_path)
 
             # Get device info
             device_info = await self.get_device_info()
 
-            # Generate commands
-            commands = make_image_command(
-                image_bytes=image_bytes,
-                file_extension=ext,
-                resize_method="fit",  # Fit ensures aspect ratio is preserved (padding) or use 'crop'
-                device_info_dict=device_info
+            # Generate commands in executor
+            commands = await self._hass.async_add_executor_job(
+                make_image_command,
+                image_bytes,
+                ext,
+                "fit",
+                device_info
             )
 
             # Send all command frames
