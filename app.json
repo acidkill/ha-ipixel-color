@@ -14,6 +14,49 @@
   "category": ["lights"],
   "permissions": ["homey:ble"],
   "platforms": ["local"],
+  "capabilities": {
+    "ipixel_mode": {
+      "type": "enum",
+      "title": {
+        "en": "Mode"
+      },
+      "getable": true,
+      "setable": true,
+      "values": [
+        {
+          "id": "textimage",
+          "title": {
+            "en": "Text Image"
+          }
+        },
+        {
+          "id": "clock",
+          "title": {
+            "en": "Clock"
+          }
+        }
+      ]
+    },
+    "ipixel_text": {
+      "type": "string",
+      "title": {
+        "en": "Text"
+      },
+      "getable": true,
+      "setable": true
+    },
+    "ipixel_clock_style": {
+      "type": "number",
+      "title": {
+        "en": "Clock Style"
+      },
+      "getable": true,
+      "setable": true,
+      "min": 0,
+      "max": 8,
+      "step": 1
+    }
+  },
   "drivers": [
     {
       "id": "ipixel_color",

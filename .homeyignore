@@ -1,0 +1,10 @@
+# Ignore source TypeScript files and TS-specific configs
+src/
+tsconfig.json
+.eslintrc
+.eslintignore
+
+# Un-ignore the compiled JavaScript files so Homey includes them in the deployed bundle
+!app.js
+!drivers/**/*.js
+!lib/**/*.js

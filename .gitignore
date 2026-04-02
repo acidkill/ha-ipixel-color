@@ -195,3 +195,8 @@ test_font_rendering.py
 
 node_modules
 .npm
+
+# Compiled Typescript
+app.js
+drivers/**/*.js
+lib/**/*.js

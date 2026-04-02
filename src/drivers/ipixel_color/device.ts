@@ -5,10 +5,17 @@ import {
   makePowerCommand,
   makeBrightnessCommand
 } from '../../lib/protocol/commands';
+import {
+  makeClockModeCommand,
+  makeTimeCommand
+} from '../../lib/protocol/advanced_commands';
 
 class iPIXELColorDevice extends Homey.Device {
   private blePeripheral: any = null;
   private isConnected: boolean = false;
+  private currentHue: number = 0;
+  private currentSaturation: number = 0;
+  private currentDim: number = 1.0;
 
   async onInit() {
     this.log(`iPIXEL Color Device ${this.getName()} has been initialized`);
@@ -17,6 +24,9 @@ class iPIXELColorDevice extends Homey.Device {
     this.registerCapabilityListener('dim', this.onCapabilityDim.bind(this));
     this.registerCapabilityListener('light_hue', this.onCapabilityHue.bind(this));
     this.registerCapabilityListener('light_saturation', this.onCapabilitySaturation.bind(this));
+    this.registerCapabilityListener('ipixel_mode', this.onCapabilityMode.bind(this));
+    this.registerCapabilityListener('ipixel_text', this.onCapabilityText.bind(this));
+    this.registerCapabilityListener('ipixel_clock_style', this.onCapabilityClockStyle.bind(this));
 
     // Connect to the device to initialize it
     await this.connect();
@@ -35,11 +45,6 @@ class iPIXELColorDevice extends Homey.Device {
         this.isConnected = true;
         this.log('Connected successfully!');
 
-        // Discover services and characteristics if needed
-        const services = await this.blePeripheral.discoverServices();
-        // Typically you'll find the service and save the characteristic references
-
-        // Listen to disconnect event
         this.blePeripheral.on('disconnect', () => {
           this.log('Disconnected');
           this.isConnected = false;
@@ -68,6 +73,7 @@ class iPIXELColorDevice extends Homey.Device {
 
   async onCapabilityDim(value: number, opts: any) {
     this.log('Capability dim set to', value); // 0.0 - 1.0
+    this.currentDim = value;
     if (!this.isConnected) {
       await this.connect();
     }
@@ -81,19 +87,57 @@ class iPIXELColorDevice extends Homey.Device {
 
   async onCapabilityHue(value: number, opts: any) {
     this.log('Capability light_hue set to', value); // 0.0 - 1.0
-    // To be implemented: translate HSV to RGB and set color text/bg command
+    this.currentHue = value;
+    await this.updateColor();
   }
 
   async onCapabilitySaturation(value: number, opts: any) {
     this.log('Capability light_saturation set to', value); // 0.0 - 1.0
-    // To be implemented
+    this.currentSaturation = value;
+    await this.updateColor();
+  }
+
+  async updateColor() {
+    // Converts HSV to RGB if we implement text image rendering from Homey later.
+    // For now, logged.
+    this.log(`Color updated: Hue=${this.currentHue}, Sat=${this.currentSaturation}`);
+  }
+
+  async onCapabilityMode(value: string, opts: any) {
+    this.log('Capability ipixel_mode set to', value);
+    if (!this.isConnected) {
+      await this.connect();
+    }
+
+    if (this.isConnected && value === 'clock') {
+      const style = this.getStoreValue('ipixel_clock_style') || 1;
+      const timeCmd = makeTimeCommand();
+      await this.sendCommand(timeCmd);
+
+      const clockCmd = makeClockModeCommand(style, true, true);
+      await this.sendCommand(clockCmd);
+    }
+  }
+
+  async onCapabilityText(value: string, opts: any) {
+    this.log('Capability ipixel_text set to', value);
+    // Requires TS PNG renderer implementation to build the byte buffers.
+    // To be implemented fully in the text renderer module in the future.
+  }
+
+  async onCapabilityClockStyle(value: number, opts: any) {
+    this.log('Capability ipixel_clock_style set to', value);
+    const mode = this.getStoreValue('ipixel_mode');
+
+    if (mode === 'clock' && this.isConnected) {
+      const clockCmd = makeClockModeCommand(value, true, true);
+      await this.sendCommand(clockCmd);
+    }
   }
 
   async sendCommand(buffer: Buffer) {
     try {
       if (this.blePeripheral && this.isConnected) {
-        // You would typically get the specific service and write characteristic here
-        // This is a placeholder for the actual Homey BLE API write
         this.log('Sending command:', buffer.toString('hex'));
 
         const serviceUuid = '0000fa00-0000-1000-8000-00805f9b34fb'; // Typically the parent service

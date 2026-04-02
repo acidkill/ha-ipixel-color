@@ -14,6 +14,7 @@ declare module 'homey' {
     getName(): string;
     getSetting(key: string): any;
     getData(): any;
+    getStoreValue(key: string): any;
     registerCapabilityListener(capabilityId: string, listener: (value: any, opts: any) => Promise<void>): void;
   }
 
