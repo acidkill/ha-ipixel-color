@@ -14,7 +14,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+#lib/
 lib64/
 parts/
 sdist/
@@ -191,4 +191,7 @@ test_font_rendering.py
 *.tar.gz
 
 # Claude Code specific
-.claude/
+.claude/node_modules/
+
+node_modules
+.npm
