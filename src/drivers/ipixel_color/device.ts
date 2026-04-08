@@ -1,5 +1,6 @@
 import Homey from 'homey';
 import {
+  SERVICE_UUID,
   WRITE_UUID,
   NOTIFY_UUID,
   makePowerCommand,
@@ -8,6 +9,7 @@ import {
 
 class iPIXELColorDevice extends Homey.Device {
   private blePeripheral: any = null;
+  private writeChar: any = null;
   private isConnected: boolean = false;
 
   async onInit() {
@@ -36,8 +38,12 @@ class iPIXELColorDevice extends Homey.Device {
         this.log('Connected successfully!');
 
         // Discover services and characteristics if needed
-        const services = await this.blePeripheral.discoverServices();
-        // Typically you'll find the service and save the characteristic references
+        await this.blePeripheral.discoverServices();
+        this.writeChar = await this.blePeripheral.getCharacteristic(SERVICE_UUID, WRITE_UUID);
+
+        if (!this.writeChar) {
+          this.error('Write characteristic not found');
+        }
 
         // Listen to disconnect event
         this.blePeripheral.on('disconnect', () => {
@@ -91,19 +97,11 @@ class iPIXELColorDevice extends Homey.Device {
 
   async sendCommand(buffer: Buffer) {
     try {
-      if (this.blePeripheral && this.isConnected) {
-        // You would typically get the specific service and write characteristic here
-        // This is a placeholder for the actual Homey BLE API write
+      if (this.blePeripheral && this.isConnected && this.writeChar) {
         this.log('Sending command:', buffer.toString('hex'));
-
-        const serviceUuid = '0000fa00-0000-1000-8000-00805f9b34fb'; // Typically the parent service
-        const writeChar = await this.blePeripheral.getCharacteristic(serviceUuid, WRITE_UUID);
-
-        if (writeChar) {
-          await writeChar.write(buffer);
-        } else {
-          this.error('Write characteristic not found');
-        }
+        await this.writeChar.write(buffer);
+      } else if (this.isConnected && !this.writeChar) {
+        this.error('Cannot send command: Write characteristic not initialized');
       }
     } catch (error) {
       this.error('Error sending command:', error);
