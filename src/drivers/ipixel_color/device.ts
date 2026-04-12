@@ -6,9 +6,12 @@ import {
   makeBrightnessCommand
 } from '../../lib/protocol/commands';
 
+const SERVICE_UUID = '0000fa00-0000-1000-8000-00805f9b34fb';
+
 class iPIXELColorDevice extends Homey.Device {
   private blePeripheral: any = null;
   private isConnected: boolean = false;
+  private writeCharacteristic: any = null;
 
   async onInit() {
     this.log(`iPIXEL Color Device ${this.getName()} has been initialized`);
@@ -37,12 +40,21 @@ class iPIXELColorDevice extends Homey.Device {
 
         // Discover services and characteristics if needed
         const services = await this.blePeripheral.discoverServices();
+
         // Typically you'll find the service and save the characteristic references
+        this.writeCharacteristic = await this.blePeripheral.getCharacteristic(SERVICE_UUID, WRITE_UUID);
+
+        if (this.writeCharacteristic) {
+          this.log('Found and cached write characteristic');
+        } else {
+          this.error('Failed to cache write characteristic');
+        }
 
         // Listen to disconnect event
         this.blePeripheral.on('disconnect', () => {
           this.log('Disconnected');
           this.isConnected = false;
+          this.writeCharacteristic = null;
         });
 
       } else {
@@ -96,8 +108,11 @@ class iPIXELColorDevice extends Homey.Device {
         // This is a placeholder for the actual Homey BLE API write
         this.log('Sending command:', buffer.toString('hex'));
 
-        const serviceUuid = '0000fa00-0000-1000-8000-00805f9b34fb'; // Typically the parent service
-        const writeChar = await this.blePeripheral.getCharacteristic(serviceUuid, WRITE_UUID);
+        let writeChar = this.writeCharacteristic;
+        if (!writeChar) {
+          writeChar = await this.blePeripheral.getCharacteristic(SERVICE_UUID, WRITE_UUID);
+          this.writeCharacteristic = writeChar; // Cache it if we found it
+        }
 
         if (writeChar) {
           await writeChar.write(buffer);
